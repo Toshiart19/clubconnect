@@ -51,7 +51,7 @@ $messages = $conn->query("
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         :root {
-            --bg-gradient: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #b31217, #e52d27);
+            --bg-gradient: linear-gradient(-45deg, #0f02ff, #1b4ba5, #9b2f9f, #b31217, #e52d27);
             --card-bg: #000;
             --text-color: #fff;
             --topbar-bg: rgba(0,0,0,0.35);

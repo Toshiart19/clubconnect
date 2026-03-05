@@ -70,7 +70,7 @@ body {
     display:flex;
     justify-content:center;
     align-items:center;
-    background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #b31217, #e52d27);
+    background: linear-gradient(-45deg, #000844, #0036be, #596aeb, #b31217, #e52d27);
     background-size:400% 400%;
     animation: gradientMove 12s ease infinite;
 }

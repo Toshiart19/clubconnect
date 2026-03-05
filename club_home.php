@@ -196,7 +196,7 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
     <title><?php echo htmlspecialchars($club['club_name']); ?></title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        :root { --accent: #b31217; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; }
+        :root { --accent: #b31217; --bg: #0f172a; --card: #032f76; --text: #f8fafc; }
         * { box-sizing: border-box; } 
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-top: 65px; }
 
