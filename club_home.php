@@ -46,64 +46,78 @@ if (isset($_POST['rsvp_action'])) {
     }
     header("Location: club_home.php?id=$club_id"); exit();
 }
-function filterProfanity($text, &$is_flagged) {
-    // Add words from any language here. 
-    // This list can be as long as you want.
+function containsProfanity($text) {
     $badWords = [
-        'puta', 'gago', 'tanga', 'bobo', 'pakshet', 'kantut', 'hayop', // Tagalog
-        'fuck', 'shit', 'asshole', 'bitch', 'dick', 'pussy', 'bastard', // English
-        'pendejo', 'mierda', 'verga'                                   // Spanish
-    ]; 
-    
-    $is_flagged = false;
-    $lowerText = strtolower($text);
+        'puta','gago','tanga','bobo','pakshet','kantut','hayop',
+        'fuck','shit','asshole','bitch','dick','pussy','bastard',
+        'pendejo','mierda','verga', 'nigga', 'negro', 'dumbass', 'ass'
+        ,'kupal', 'tangina'
+    ];
+
+    $normalized = strtolower($text);
+
+    // Remove extra spaces & symbols to detect hidden profanity
+    $normalized = preg_replace('/[^a-z0-9]/i', '', $normalized);
 
     foreach ($badWords as $word) {
-        if (strpos($lowerText, $word) !== false) {
-            $is_flagged = true;
-            $replacement = str_repeat('*', strlen($word));
-            // Case-insensitive replacement
-            $text = preg_replace('/\b' . preg_quote($word, '/') . '\b/i', $replacement, $text);
-            
-            // If they tried to hide it (no spaces), this catches the substring
-            $text = str_ireplace($word, $replacement, $text);
+        $cleanWord = preg_replace('/[^a-z0-9]/i', '', strtolower($word));
+
+        if (strpos($normalized, $cleanWord) !== false) {
+            return true;
         }
     }
-    return $text;
+
+    return false;
 }
 if (isset($_POST['add_comment'])) {
+
     $post_id = (int)$_POST['post_id'];
-    $raw_text = $_POST['comment_text'];
-    
-    $is_flagged = false;
-    $filtered_text = filterProfanity($raw_text, $is_flagged);
-    $comment_text = $conn->real_escape_string($filtered_text);
+    $raw_text = trim($_POST['comment_text']);
 
-    if (!empty(trim($comment_text))) {
-        // 1. Save the comment
-        $conn->query("INSERT INTO post_comments (post_id, user_id, comment_text) VALUES ($post_id, $user_id, '$comment_text')");
-        
-        // 2. Notify the moderator if flagged
-        if ($is_flagged) {
-            $u_info = $conn->query("SELECT fullname FROM users WHERE id = $user_id")->fetch_assoc();
-            $sender = $conn->real_escape_string($u_info['fullname'] ?? 'A user');
-            $msg = "Profanity blocked from $sender: \"$comment_text\"";
-
-            // Find the moderator for this specific club
-            // We look for a user whose role is 'moderator' and is assigned to this club
-            $mod_query = "SELECT id FROM users WHERE LOWER(role) = 'moderator' AND managed_club_id = $club_id LIMIT 1";
-            $mod_res = $conn->query($mod_query);
-            
-            if ($mod_res && $mod_res->num_rows > 0) {
-                $mod = $mod_res->fetch_assoc();
-                $mod_id = $mod['id'];
-                $conn->query("INSERT INTO notifications (user_id, message, type) VALUES ($mod_id, '$msg', 'flagged_comment')");
-            }
-        }
+    if (empty($raw_text)) {
+        $_SESSION['comment_error'] = "Comment cannot be empty.";
+        header("Location: club_home.php?id=$club_id");
+        exit();
     }
+
+    // 🚫 PROFANITY CHECK
+    if (containsProfanity($raw_text)) {
+
+        // Optional: Notify moderator
+        $u_info = $conn->query("SELECT fullname FROM users WHERE id = $user_id")->fetch_assoc();
+        $sender = $conn->real_escape_string($u_info['fullname'] ?? 'A user');
+        $cleanText = $conn->real_escape_string($raw_text);
+
+        $msg = "Blocked comment from $sender: \"$cleanText\"";
+
+        $mod_query = "SELECT id FROM users 
+                      WHERE LOWER(role) = 'moderator' 
+                      AND managed_club_id = $club_id 
+                      LIMIT 1";
+
+        $mod_res = $conn->query($mod_query);
+
+        if ($mod_res && $mod_res->num_rows > 0) {
+            $mod_id = $mod_res->fetch_assoc()['id'];
+            $conn->query("INSERT INTO notifications (user_id, message, type) 
+                          VALUES ($mod_id, '$msg', 'flagged_comment')");
+        }
+
+        // 🚫 BLOCK COMMENT
+        $_SESSION['comment_error'] = "⚠ Your comment violates our community guidelines and was not posted.";
+        header("Location: club_home.php?id=$club_id");
+        exit();
+    }
+
+    // ✅ SAFE COMMENT — SAVE IT
+    $safe_text = $conn->real_escape_string($raw_text);
+    $conn->query("INSERT INTO post_comments (post_id, user_id, comment_text) 
+                  VALUES ($post_id, $user_id, '$safe_text')");
+
     header("Location: club_home.php?id=$club_id");
     exit();
 }
+    
 // --- MEMBERSHIP REQUEST HANDLING ---
 if (isset($_POST['join_club'])) {
     // 1. Send Join Request
@@ -556,6 +570,21 @@ while($c = $comments->fetch_assoc()):
     </div>
 <?php endwhile; ?>
 
+<?php if(isset($_SESSION['comment_error'])): ?>
+    <div style="
+        background: rgba(220,38,38,0.15);
+        border: 1px solid #dc2626;
+        color: #fecaca;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        font-size: 13px;">
+        <?php 
+            echo $_SESSION['comment_error']; 
+            unset($_SESSION['comment_error']); 
+        ?>
+    </div>
+<?php endif; ?>
 <!-- ADD COMMENT FORM -->
 <form method="POST" class="comment-form" style="display: flex; gap: 8px; margin-top: 15px; align-items: center;">
     <input type="hidden" name="post_id" value="<?php echo $pid; ?>">
