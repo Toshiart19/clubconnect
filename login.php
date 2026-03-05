@@ -31,14 +31,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['fullname'] = $user['fullname'];
-                $_SESSION['role'] = $user['role'];
+                $_SESSION['role'] = strtolower($user['role']); // Convert to lowercase for consistent checking
                 $_SESSION['managed_club_id'] = $user['managed_club_id'];
 
                 $_SESSION['profile_pic'] = !empty($user['profile_pic'])
                     ? $user['profile_pic']
                     : 'assetimages/default-user.png';
 
-                header("Location: home.php");
+                // --- REDIRECT LOGIC START ---
+                if ($_SESSION['role'] === 'admin') {
+                    header("Location: admin_dashboard.php");
+                } else {
+                    header("Location: home.php");
+                }
+                // --- REDIRECT LOGIC END ---
+                
                 exit();
 
             } else {
@@ -70,7 +77,7 @@ body {
     display:flex;
     justify-content:center;
     align-items:center;
-    background: linear-gradient(-45deg, #000844, #0036be, #596aeb, #b31217, #e52d27);
+    background: linear-gradient(-45deg, #000844, #0036be, #583053, #b31217, #e52d27);
     background-size:400% 400%;
     animation: gradientMove 12s ease infinite;
 }
