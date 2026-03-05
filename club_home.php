@@ -51,7 +51,8 @@ function containsProfanity($text) {
         'puta','gago','tanga','bobo','pakshet','kantut','hayop',
         'fuck','shit','asshole','bitch','dick','pussy','bastard',
         'pendejo','mierda','verga', 'nigga', 'negro', 'dumbass', 'ass'
-        ,'kupal', 'tangina'
+        ,'kupal', 'tangina' , 'pota' , 'powtah', 'gagu', 'iyot', 'pisot'
+        ,'tite', 'kado'
     ];
 
     $normalized = strtolower($text);
