@@ -448,6 +448,39 @@ margin:5px 0;
 border-radius:6px;
 text-align:right;
 }
+.chat-row{
+display:flex;
+align-items:flex-start;
+margin:6px 0;
+}
+
+.chat-avatar{
+width:28px;
+height:28px;
+border-radius:50%;
+margin-right:6px;
+}
+
+.chat-bubble{
+background:#1e293b;
+padding:6px 10px;
+border-radius:10px;
+max-width:70%;
+font-size:13px;
+}
+
+.mod-msg{
+flex-direction:row-reverse;
+}
+
+.mod-msg .chat-bubble{
+background:#b31217;
+}
+
+.mod-msg .chat-avatar{
+margin-left:6px;
+margin-right:0;
+}
     </style>
 </head>
 <body>
@@ -841,10 +874,28 @@ function loadChat(){
 fetch("fetch_chat.php?student_id="+currentStudent)
 .then(res=>res.text())
 .then(data=>{
-document.getElementById("chatMessages").innerHTML=data;
+
+let chat = document.getElementById("chatMessages");
+
+let shouldScroll =
+chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 10;
+
+chat.innerHTML = data;
+
+if(shouldScroll){
+chat.scrollTop = chat.scrollHeight;
+}
+
 });
 
 }
+setInterval(function(){
+
+if(currentStudent != 0){
+loadChat();
+}
+
+},2000);
 
 function sendReply(){
 
@@ -861,6 +912,19 @@ loadChat();
 });
 
 }
+let typingTimer;
+
+document.getElementById("replyText").addEventListener("input", function(){
+
+clearTimeout(typingTimer);
+
+fetch("typing.php?student_id="+currentStudent);
+
+typingTimer = setTimeout(()=>{
+fetch("stop_typing.php?student_id="+currentStudent);
+},2000);
+
+});
 </script>
 <?php if($is_assigned_moderator): ?>
 <!-- FLOATING BUBBLE -->
@@ -899,7 +963,7 @@ loadChat();
     </div>
 
     <div id="chatMessages" style="height:220px;overflow-y:auto;border:1px solid #333;padding:8px;border-radius:8px;"></div>
-
+    <div id="typingIndicator" style="font-size:12px;color:#94a3b8;margin-top:4px;"></div>
 <div style="display:flex;margin-top:6px;">
 <input id="replyText" placeholder="Type reply..." style="flex:1;padding:6px;">
 <button onclick="sendReply()">Send</button>

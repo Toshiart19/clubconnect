@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 28, 2026 at 11:55 AM
+-- Generation Time: Mar 07, 2026 at 09:16 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -31,20 +31,21 @@ CREATE TABLE `clubs` (
   `id` int(11) NOT NULL,
   `club_name` varchar(100) NOT NULL,
   `description` text DEFAULT NULL,
-  `logo` varchar(255) DEFAULT NULL
+  `logo` varchar(255) DEFAULT NULL,
+  `hex_color` varchar(7) DEFAULT '#b31217'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `clubs`
 --
 
-INSERT INTO `clubs` (`id`, `club_name`, `description`, `logo`) VALUES
-(1, 'ADT Dancing', 'The premier dance troupe of ACLC.', '/clubconnect/assetimages/ADT.jpg'),
-(2, 'SCO Leaders', 'The Student Council Organization of ACLC.', '/clubconnect/assetimages/SCO.jpg'),
-(3, 'Rover Scouts', 'ACLC Rover Circle 16 - Building character.', '/clubconnect/assetimages/RoverLogo.png'),
-(4, 'SAMAFIL Culture', 'Promoting Filipino cultural heritage.', '/clubconnect/assetimages/SAMAFIL.jpg'),
-(5, 'Red Cross Volunteer', 'Dedicated to life-saving and service.', '/clubconnect/assetimages/ACLCRC.jpg'),
-(6, 'Hawks Sports', 'The official athletic organization.', '/clubconnect/assetimages/ACLCHawks.jpg');
+INSERT INTO `clubs` (`id`, `club_name`, `description`, `logo`, `hex_color`) VALUES
+(1, 'ADT Dancing', 'The premier dance troupe of ACLC.', '/clubconnect/assetimages/ADT.jpg', '#fd2be1'),
+(2, 'SCO Leaders', 'The Student Council Organization of ACLC.', '/clubconnect/assetimages/SCO.jpg', '#b31217'),
+(3, 'Rover Scouts', 'ACLC Rover Circle 16 - Building character.', '/clubconnect/assetimages/RoverLogo.png', '#0040ff'),
+(4, 'SAMAFIL Culture', 'Promoting Filipino cultural heritage.', '/clubconnect/assetimages/SAMAFIL.jpg', '#ffea00'),
+(5, 'Red Cross Volunteer', 'Dedicated to life-saving and service.', '/clubconnect/assetimages/ACLCRC.jpg', '#00ff1e'),
+(6, 'Hawks Sports', 'The official athletic organization.', '/clubconnect/assetimages/ACLCHawks.jpg', '#ffffff');
 
 -- --------------------------------------------------------
 
@@ -103,7 +104,7 @@ CREATE TABLE `club_posts` (
 --
 
 INSERT INTO `club_posts` (`id`, `club_id`, `title`, `content`, `image_url`, `location_address`, `event_date`, `created_at`) VALUES
-(2, 3, 'Rover Scout Investiture', 'Rover Vigil and Investiture Ceremony for new incoming rover scouts.', 'assetimages/posts/1772096760_RecruitmentPosterRover.png', 'San Agustin Stand Alone Senior High School, San Agustin, Iriga City', NULL, '2026-02-26 09:06:00');
+(3, 3, 'Rover Vigil and Investiture', 'the first step to becoming a full pledged rover scout', 'assetimages/posts/1772512877_1772096760_RecruitmentPosterRover.png', 'San Agustin Stand Alone Senior High School, San Agustin, Iriga City', NULL, '2026-03-03 04:41:17');
 
 -- --------------------------------------------------------
 
@@ -171,9 +172,7 @@ CREATE TABLE `event_responses` (
 --
 
 INSERT INTO `event_responses` (`id`, `user_id`, `post_id`, `status`) VALUES
-(1, 3, 2, 'joining'),
-(2, 4, 2, 'joining'),
-(3, 6, 2, 'joining');
+(4, 3, 3, 'joining');
 
 -- --------------------------------------------------------
 
@@ -278,7 +277,13 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `type`, `is_read`, `cre
 (21, 5, 'Your request to join Rover Scouts has been approved! Welcome!', 'status', 0, '2026-02-28 07:21:01'),
 (22, 3, 'John Razel Villar has requested to join Rover Scouts', 'join_request', 1, '2026-02-28 07:23:08'),
 (23, 6, 'Your request to join Rover Scouts has been approved! Welcome!', 'status', 0, '2026-02-28 07:23:45'),
-(24, 3, 'Profanity blocked from Angelo Concepcion: \"**** amp\"', 'flagged_comment', 1, '2026-02-28 08:08:39');
+(24, 3, 'Profanity blocked from Angelo Concepcion: \"**** amp\"', 'flagged_comment', 1, '2026-02-28 08:08:39'),
+(25, 3, 'Profanity blocked from Norman Grant: \"****\"', 'flagged_comment', 1, '2026-03-01 04:04:29'),
+(26, 3, 'Blocked comment from Norman Grant: \"bobo\"', 'flagged_comment', 1, '2026-03-03 02:24:58'),
+(27, 3, 'Profanity blocked from Carl Sivan Tibi: \"****\"', 'flagged_comment', 1, '2026-03-03 02:48:19'),
+(28, 3, 'Blocked comment from Carl Sivan Tibi: \"fuck\"', 'flagged_comment', 1, '2026-03-03 02:53:38'),
+(29, 3, 'Blocked comment from Carl Sivan Tibi: \"fuck\"', 'flagged_comment', 1, '2026-03-03 02:55:00'),
+(30, 3, 'Blocked comment from Carl Sivan Tibi: \"puta\"', 'flagged_comment', 1, '2026-03-04 07:18:01');
 
 -- --------------------------------------------------------
 
@@ -293,18 +298,6 @@ CREATE TABLE `post_comments` (
   `comment_text` text NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `post_comments`
---
-
-INSERT INTO `post_comments` (`id`, `post_id`, `user_id`, `comment_text`, `created_at`) VALUES
-(20, 2, 3, 'that\'s nice', '2026-02-28 07:38:15'),
-(21, 2, 3, 'amazing', '2026-02-28 07:53:01'),
-(22, 2, 3, 'sadsad', '2026-02-28 07:53:37'),
-(23, 2, 5, '**** amp', '2026-02-28 08:08:39'),
-(24, 2, 4, 'dsadsad', '2026-02-28 08:25:18'),
-(25, 2, 3, 'hayyp', '2026-02-28 08:43:07');
 
 -- --------------------------------------------------------
 
@@ -331,7 +324,8 @@ INSERT INTO `users` (`id`, `usn`, `fullname`, `email`, `password`, `role`, `prof
 (3, '22000646400', 'Carl Sivan Tibi', 'tibi.carl1999@gmail.com', '$2y$10$N6jFRXRdd4UHuHZkXIkfeuC8wCNAZySAzdxr8tAUob0gGHbgc3dbG', 'Moderator', 'uploads/profile_3.jpg', 3),
 (4, '22000546211', 'Norman Grant', 'carlsivan.19@gmail.com', '$2y$10$N6jFRXRdd4UHuHZkXIkfeuC8wCNAZySAzdxr8tAUob0gGHbgc3dbG', 'Student', 'uploads/profile_4.jpg', NULL),
 (5, '21000974900', 'Angelo Concepcion', 'borromeoangelo91@gmail.com', '$2y$10$N6jFRXRdd4UHuHZkXIkfeuC8wCNAZySAzdxr8tAUob0gGHbgc3dbG', 'Student', 'uploads/profile_5.png', NULL),
-(6, '20001999500', 'John Razel Villar', 'villarjohnrazel@gmail.com', '$2y$10$N6jFRXRdd4UHuHZkXIkfeuC8wCNAZySAzdxr8tAUob0gGHbgc3dbG', 'Student', 'assetimages/default-user.png', NULL);
+(6, '20001999500', 'John Razel Villar', 'villarjohnrazel@gmail.com', '$2y$10$N6jFRXRdd4UHuHZkXIkfeuC8wCNAZySAzdxr8tAUob0gGHbgc3dbG', 'Student', 'assetimages/default-user.png', NULL),
+(7, '200019899500', 'Alexander Norman', 'normangrant@gmail.com', '$2y$10$N6jFRXRdd4UHuHZkXIkfeuC8wCNAZySAzdxr8tAUob0gGHbgc3dbG', 'Admin', 'assetimages/default-user.png', NULL);
 
 --
 -- Indexes for dumped tables
@@ -458,7 +452,7 @@ ALTER TABLE `club_memberships`
 -- AUTO_INCREMENT for table `club_posts`
 --
 ALTER TABLE `club_posts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `events`
@@ -476,7 +470,7 @@ ALTER TABLE `event_reminders`
 -- AUTO_INCREMENT for table `event_responses`
 --
 ALTER TABLE `event_responses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `membership_requests`
@@ -500,19 +494,19 @@ ALTER TABLE `moderator_messages`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `post_comments`
 --
 ALTER TABLE `post_comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Constraints for dumped tables
