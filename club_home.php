@@ -52,7 +52,7 @@ function containsProfanity($text) {
         'fuck','shit','asshole','bitch','dick','pussy','bastard',
         'pendejo','mierda','verga', 'nigga', 'negro', 'dumbass', 'ass'
         ,'kupal', 'tangina' , 'pota' , 'powtah', 'gagu', 'iyot', 'pisot'
-        ,'tite', 'kado'
+        ,'tite', 'kado' , 'dumb', 'stupid', 'idiot'
     ];
 
     $normalized = strtolower($text);

@@ -21,7 +21,7 @@ if ($memberQuery) {
 }
 
 /* ==============================
-   GET POSTS AS EVENTS (Merged)
+   GET POSTS AS EVENTS
 ============================== */
 $currentYear = date("Y");
 $startDate = ($currentYear - 1) . "-01-01";
@@ -31,7 +31,9 @@ $events = [];
 $eventQuery = $conn->query("
     SELECT 
         p.id, 
-        p.content as title, 
+        p.title, 
+        p.content, 
+        p.image_url,         -- Ensure this matches your DB column
         DATE(p.created_at) as event_date, 
         p.club_id, 
         c.club_name, 
@@ -72,43 +74,17 @@ if ($eventQuery) {
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
     .day-name { text-align: center; font-weight: bold; opacity: 0.8; }
     .day {
-    height: 100px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 12px;
-    padding: 8px; /* Slightly more padding */
-    position: relative;
-    font-size: 14px;
-    overflow-y: auto; /* Still allow scrolling if too many dots */
-    
-    /* NEW: Use flexbox so multiple dots wrap correctly */
-    display: flex;
-    flex-wrap: wrap; 
-    align-content: flex-start; /* Align dots to the top-left */
-    gap: 5px; /* Spacing between dots */
-}
-    .day-number {
-    position: absolute;
-    bottom: 8px;
-    right: 10px;
-    font-size: 12px;
-    opacity: 0.6;
-    pointer-events: none; /* User can click through the number */
-}
+        height: 100px; background: rgba(255,255,255,0.05); border-radius: 12px;
+        padding: 8px; position: relative; font-size: 14px; overflow-y: auto;
+        display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px;
+    }
+    .day-number { position: absolute; bottom: 8px; right: 10px; font-size: 12px; opacity: 0.6; pointer-events: none; }
     
     .dot {
-    width: 14px;  /* INCREASED FROM 10px */
-    height: 14px; /* INCREASED FROM 10px */
-    border-radius: 50%;
-    display: inline-block;
-    border: 1px solid rgba(255,255,255,0.3);
-    transition: 0.2s ease-in-out;
-    cursor: pointer;
-}
-    .dot:hover {
-    transform: scale(1.35); /* Pop out effect */
-    box-shadow: 0 0 10px white; /* Extra glow on hover */
-    z-index: 10; /* Ensure it floats above other dots */
-}
+        width: 14px; height: 14px; border-radius: 50%; display: inline-block;
+        border: 1px solid rgba(255,255,255,0.3); transition: 0.2s ease-in-out; cursor: pointer;
+    }
+    .dot:hover { transform: scale(1.35); box-shadow: 0 0 10px white; z-index: 10; }
 
     .upcoming-item { padding: 15px; background: rgba(255,255,255,0.05); margin-bottom: 12px; border-radius: 12px; }
 
@@ -151,24 +127,34 @@ if ($eventQuery) {
             WHERE p.created_at >= '$today'
             ORDER BY p.created_at ASC LIMIT 5
         ");
-        while ($u = $upcomingQuery->fetch_assoc()) {
-            $color = $u['hex_color'] ?: '#e52d27';
-            echo "<div class='upcoming-item' style='border-left: 5px solid $color;'>
-                    <strong style='color: $color;'>" . htmlspecialchars(substr($u['title'], 0, 50)) . "...</strong><br>
-                    <small>{$u['club_name']} • " . date("M d, Y", strtotime($u['event_date'])) . "</small>
-                  </div>";
+        if ($upcomingQuery) {
+            while ($u = $upcomingQuery->fetch_assoc()) {
+                $color = $u['hex_color'] ?: '#e52d27';
+                echo "<div class='upcoming-item' style='border-left: 5px solid $color;'>
+                        <strong style='color: $color;'>" . htmlspecialchars(substr($u['title'], 0, 50)) . "...</strong><br>
+                        <small>{$u['club_name']} • " . date("M d, Y", strtotime($u['event_date'])) . "</small>
+                      </div>";
+            }
         }
         ?>
     </div>
 </div>
 
-<div id="postPreviewModal" style="display:none; position:fixed; z-index:2000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(5px); justify-content:center; align-items:center;">
-    <div style="background:#1a1a1a; width:90%; max-width:400px; padding:25px; border-radius:20px; border-top: 8px solid #e52d27; position:relative; color:white;">
-        <span onclick="closePreview()" style="position:absolute; top:15px; right:20px; font-size:24px; cursor:pointer;">&times;</span>
-        <small id="previewClub" style="text-transform:uppercase; font-weight:bold;"></small>
-        <h3 style="margin:10px 0;">Club Update</h3>
-        <p id="previewContent" style="font-size:15px; line-height:1.6; max-height:200px; overflow-y:auto;"></p>
-        <button onclick="closePreview()" style="margin-top:20px; background:#e52d27; border:none; color:white; padding:10px; width:100%; border-radius:10px; cursor:pointer;">Close</button>
+<div id="postPreviewModal" style="display:none; position:fixed; z-index:2000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); justify-content:center; align-items:center; padding: 20px;">
+    <div style="background:#1a1a1a; width:100%; max-width:500px; border-radius:20px; border-top: 10px solid #e52d27; position:relative; color:white; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
+        
+        <div id="previewImageContainer" style="width:100%; height:200px; background:#000; display:none; overflow:hidden;">
+            <img id="previewImage" src="" style="width:100%; height:100%; object-fit:cover;">
+        </div>
+
+        <div style="padding:25px;">
+            <span onclick="closePreview()" style="position:absolute; top:15px; right:20px; font-size:28px; cursor:pointer; text-shadow: 0 0 10px #000;">&times;</span>
+            <small id="previewClub" style="text-transform:uppercase; letter-spacing:1px; font-weight:bold;"></small>
+            <h2 id="previewTitle" style="margin:10px 0; font-size: 22px;"></h2>
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:15px 0;">
+            <p id="previewContent" style="font-size:15px; line-height:1.6; opacity:0.9; max-height:150px; overflow-y:auto;"></p>
+            <button onclick="closePreview()" style="margin-top:20px; background:#e52d27; border:none; color:white; padding:12px; width:100%; border-radius:12px; font-weight:bold; cursor:pointer; transition: 0.3s;">Close</button>
+        </div>
     </div>
 </div>
 
@@ -211,7 +197,6 @@ function renderCalendar() {
                 const dot = document.createElement("span");
                 dot.className = "dot";
                 dot.style.backgroundColor = ev.hex_color || '#e52d27';
-                dot.style.cursor = "pointer";
                 
                 if (userClubs.includes(parseInt(ev.club_id))) {
                     dot.style.boxShadow = `0 0 8px ${ev.hex_color}`;
@@ -230,17 +215,44 @@ function renderCalendar() {
 
 function showPostPreview(post) {
     const modal = document.getElementById("postPreviewModal");
-    document.getElementById("previewClub").innerText = post.club_name;
-    document.getElementById("previewClub").style.color = post.hex_color;
-    document.getElementById("previewContent").innerText = post.title;
+    const imgContainer = document.getElementById("previewImageContainer");
+    const imgTag = document.getElementById("previewImage");
+    const clubEl = document.getElementById("previewClub");
+    const titleEl = document.getElementById("previewTitle");
+    const contentEl = document.getElementById("previewContent");
+
+    clubEl.innerText = post.club_name;
+    clubEl.style.color = post.hex_color;
     modal.querySelector('div').style.borderTopColor = post.hex_color;
+    titleEl.innerText = post.title || "Club Update";
+    contentEl.innerText = post.content;
+
+    // Use post.image_url to match your SQL query
+    if (post.image_url && post.image_url.trim() !== "") {
+        // Use the full URL or correct path. If it's just a filename, add your path prefix here
+        imgTag.src = post.image_url; 
+        imgContainer.style.display = "block";
+    } else {
+        imgContainer.style.display = "none";
+    }
+
     modal.style.display = "flex";
 }
 
-function closePreview() { document.getElementById("postPreviewModal").style.display = "none"; }
-function changeMonth(step) { currentDate.setMonth(currentDate.getMonth() + step); renderCalendar(); }
+function closePreview() {
+    document.getElementById("postPreviewModal").style.display = "none";
+}
 
-window.onclick = (e) => { if(e.target.id === "postPreviewModal") closePreview(); }
+function changeMonth(step) {
+    currentDate.setMonth(currentDate.getMonth() + step);
+    renderCalendar();
+}
+
+// Close on outside click
+window.onclick = function(event) {
+    const modal = document.getElementById("postPreviewModal");
+    if (event.target == modal) closePreview();
+}
 
 renderCalendar();
 </script>
