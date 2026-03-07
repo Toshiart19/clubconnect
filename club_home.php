@@ -36,6 +36,17 @@ if (isset($_POST['rsvp_action'])) {
 	} else {
 		$conn->query("INSERT INTO event_responses (user_id, post_id, status) VALUES ($user_id, $post_id, '$status')");
 	}
+
+	// if submitted via AJAX, return the new counts instantly!
+	if(isset($_POST['ajax'])) {
+		$counts = $conn->query("SELECT 
+            COALESCE(SUM(CASE WHEN status = 'joining' THEN 1 ELSE 0 END), 0) as join_count,
+            COALESCE(SUM(CASE WHEN status = 'not_joining' THEN 1 ELSE 0 END), 0) as skip_count
+            FROM event_responses WHERE post_id = $post_id")->fetch_assoc();
+		echo json_encode($counts);
+		exit();
+	}
+
 	header("Location: club_home.php?id=$club_id"); exit();
 }
 
@@ -253,6 +264,17 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
         .student-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; font-size: 11px; padding: 3px 6px; border-radius: 50%; display: none; box-shadow: 0 0 8px #ef4444; }
         .toast-notification { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: #2563eb; color: white; padding: 12px 24px; border-radius: 50px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 10px; z-index: 6000; opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); cursor: pointer; }
         .toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        .comment-error-box {
+            background: rgba(220,38,38,0.15);
+            border: 1px solid #dc2626;
+            color: #fecaca;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            display: none;
+        }
 	</style>
 </head>
 <body>
@@ -338,7 +360,7 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
 				</div>
 
 				<div class="post-actions">
-					<form method="POST" style="display:flex; gap:5px;">
+					<form method="POST" onsubmit="submitRsvp(event, <?php echo $pid; ?>)" style="display:flex; gap:5px;">
 						<input type="hidden" name="post_id" value="<?php echo $pid; ?>">
 						<button type="submit" name="rsvp_status" value="joining" class="btn-rsvp btn-join">Join</button>
 						<button type="submit" name="rsvp_status" value="not_joining" class="btn-rsvp btn-skip">Skip</button>
@@ -375,6 +397,10 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
 						<?php echo $_SESSION['comment_error']; unset($_SESSION['comment_error']); ?>
 					</div>
 				<?php endif; ?>
+
+				<div id="comment-error-<?php echo $pid; ?>" class="comment-error-box">
+					⚠ Your comment violates our community guidelines and was not posted.
+				</div>
 
 				<form method="POST" class="comment-form" onsubmit="submitComment(event, <?php echo $pid; ?>)" style="display: flex; gap: 8px; margin-top: 15px; align-items: center;">
 					<input type="hidden" name="post_id" value="<?php echo $pid; ?>">
@@ -711,19 +737,19 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
 
     // --- AJAX COMMENT SUBMISSION ---
     function submitComment(e, postId) {
-        e.preventDefault(); // Stop the page from refreshing!
+        e.preventDefault(); // stop the page from refreshing!
 
         const form = e.target;
         const input = form.querySelector('input[name="comment_text"]');
         const text = input.value.trim();
         if(!text) return;
 
-        // Build the data payload
+        // build the data payload
         const formData = new URLSearchParams();
         formData.append('add_comment', '1');
         formData.append('post_id', postId);
         formData.append('comment_text', text);
-        formData.append('ajax', '1'); // Tell PHP to return HTML, not a redirect
+        formData.append('ajax', '1'); // PHP handles profanity blocking and returns "profanity_error"
 
         fetch(window.location.href, {
             method: 'POST',
@@ -732,15 +758,68 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
         })
             .then(res => res.text())
             .then(html => {
+                // find the placeholder error box ADJACENT to THIS specific form
+                const errorBox = document.getElementById(`comment-error-${postId}`);
+
                 if(html === "profanity_error") {
-                    alert("⚠ Your comment violates our community guidelines and was not posted.");
+                    if (errorBox) errorBox.style.display = 'block';
                 } else {
-                    // Instantly append the new comment HTML directly above the form
-                    form.insertAdjacentHTML('beforebegin', html);
-                    input.value = ''; // Clear the input field for the next comment
+                    // success path
+                    if (errorBox) errorBox.style.display = 'none'; // strictly clear any old error message
+                    form.insertAdjacentHTML('beforebegin', html); // snap the new comment element into place
+                    input.value = ''; // clear input for next use
                 }
             });
     }
+
+    // --- AJAX RSVP SUBMISSION ---
+    function submitRsvp(e, postId) {
+        e.preventDefault(); // stop the refresh!
+
+        // e.submitter gets the exact button the user clicked (Join or Skip)
+        const btn = e.submitter;
+        if (!btn) return;
+
+        const formData = new URLSearchParams();
+        formData.append('rsvp_action', '1');
+        formData.append('post_id', postId);
+        formData.append('rsvp_status', btn.value);
+        formData.append('ajax', '1');
+
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        })
+            .then(res => res.json())
+            .then(data => {
+                // find the analytics div for THIS specific post and update the numbers instantly
+                const analyticsDiv = e.target.closest('.post-footer').querySelector('.analytics');
+                analyticsDiv.innerHTML = `<span><b>${data.join_count}</b> Joining</span><span><b>${data.skip_count}</b> Skipping</span>`;
+            });
+    }
+
+    // --- ESCAPE KEY ACCESSIBILITY ---
+    document.addEventListener('keydown', function(event) {
+        if (event.key === "Escape") {
+            // close standard modals (Create Post, Member List)
+            closeModals();
+
+            // close student chat (if it exists and is open)
+            if (typeof closeStudentChat === 'function') {
+                closeStudentChat();
+            }
+
+            // take moderator back to inbox (if they are currently in a chat)
+            if (typeof backToInbox === 'function' && document.getElementById('chatBox')?.style.display === 'flex') {
+                backToInbox();
+            }
+
+            // close the top navigation dropdown
+            const dropMenu = document.getElementById('dropMenu');
+            if (dropMenu) dropMenu.style.display = 'none';
+        }
+    });
 </script>
 
 <?php if($is_assigned_moderator): ?>
