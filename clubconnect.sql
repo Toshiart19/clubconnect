@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 07, 2026 at 09:16 AM
+-- Generation Time: Mar 08, 2026 at 04:20 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,29 @@ SET time_zone = "+00:00";
 --
 -- Database: `clubconnect`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `announcements`
+--
+
+CREATE TABLE `announcements` (
+  `id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `announcements`
+--
+
+INSERT INTO `announcements` (`id`, `admin_id`, `title`, `message`, `created_at`) VALUES
+(2, 7, 'Emergency Meeting', 'Meeting will be held at Room 5, Main ACLC Building at 3:00pm today', '2026-03-07 23:58:57'),
+(3, 7, 'Nang gayun ni Trixie', 'legit yan', '2026-03-08 02:08:20'),
+(4, 7, 'Test Announcement', 'this is a test', '2026-03-08 02:47:11');
 
 -- --------------------------------------------------------
 
@@ -45,7 +68,8 @@ INSERT INTO `clubs` (`id`, `club_name`, `description`, `logo`, `hex_color`) VALU
 (3, 'Rover Scouts', 'ACLC Rover Circle 16 - Building character.', '/clubconnect/assetimages/RoverLogo.png', '#0040ff'),
 (4, 'SAMAFIL Culture', 'Promoting Filipino cultural heritage.', '/clubconnect/assetimages/SAMAFIL.jpg', '#ffea00'),
 (5, 'Red Cross Volunteer', 'Dedicated to life-saving and service.', '/clubconnect/assetimages/ACLCRC.jpg', '#00ff1e'),
-(6, 'Hawks Sports', 'The official athletic organization.', '/clubconnect/assetimages/ACLCHawks.jpg', '#ffffff');
+(6, 'Hawks Sports', 'The official athletic organization.', '/clubconnect/assetimages/ACLCHawks.jpg', '#ffffff'),
+(7, 'The Pixel', 'School Publication', 'assetimages/default-banner.jpg', '#ff7b00');
 
 -- --------------------------------------------------------
 
@@ -104,7 +128,8 @@ CREATE TABLE `club_posts` (
 --
 
 INSERT INTO `club_posts` (`id`, `club_id`, `title`, `content`, `image_url`, `location_address`, `event_date`, `created_at`) VALUES
-(3, 3, 'Rover Vigil and Investiture', 'the first step to becoming a full pledged rover scout', 'assetimages/posts/1772512877_1772096760_RecruitmentPosterRover.png', 'San Agustin Stand Alone Senior High School, San Agustin, Iriga City', NULL, '2026-03-03 04:41:17');
+(3, 3, 'Rover Vigil and Investiture', 'the first step to becoming a full pledged rover scout', 'assetimages/posts/1772512877_1772096760_RecruitmentPosterRover.png', 'San Agustin Stand Alone Senior High School, San Agustin, Iriga City', NULL, '2026-03-03 04:41:17'),
+(4, 3, 'Emergency meeting for Foundation Ball', 'meeting', '', 'ACLC College of Iriga, San Miguel, Iriga City', NULL, '2026-03-08 00:00:21');
 
 -- --------------------------------------------------------
 
@@ -148,9 +173,8 @@ INSERT INTO `event_notifications` (`user_id`, `post_id`, `frequency`) VALUES
 
 CREATE TABLE `event_reminders` (
   `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `post_id` int(11) NOT NULL,
-  `frequency` enum('daily','weekly') NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `post_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -172,7 +196,9 @@ CREATE TABLE `event_responses` (
 --
 
 INSERT INTO `event_responses` (`id`, `user_id`, `post_id`, `status`) VALUES
-(4, 3, 3, 'joining');
+(4, 3, 3, 'joining'),
+(5, 4, 3, 'joining'),
+(6, 5, 3, 'joining');
 
 -- --------------------------------------------------------
 
@@ -218,6 +244,22 @@ CREATE TABLE `messages` (
   `is_read` tinyint(1) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `messages`
+--
+
+INSERT INTO `messages` (`id`, `sender_id`, `receiver_id`, `club_id`, `message_text`, `is_read`, `created_at`) VALUES
+(1, 4, 3, 0, 'hello moderator', 1, '2026-03-07 20:57:02'),
+(2, 3, 4, 0, 'hello there, how may I help you??', 1, '2026-03-07 20:57:35'),
+(3, 4, 3, 0, 'would you mind helping me', 1, '2026-03-07 22:32:25'),
+(4, 4, 3, 0, '??', 1, '2026-03-07 22:32:27'),
+(5, 3, 4, 0, 'sure what do you need helping with?', 1, '2026-03-07 22:54:44'),
+(6, 3, 4, 0, 'just tell me', 1, '2026-03-07 23:55:46'),
+(7, 4, 3, 0, 'thank you so much', 1, '2026-03-07 23:57:02'),
+(8, 3, 4, 0, 'tell me what you need', 1, '2026-03-07 23:57:25'),
+(9, 4, 3, 0, 'Hi pogi, can you help me?', 1, '2026-03-08 02:10:06'),
+(10, 3, 4, 0, 'sure', 0, '2026-03-08 02:10:32');
 
 -- --------------------------------------------------------
 
@@ -283,7 +325,13 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `type`, `is_read`, `cre
 (27, 3, 'Profanity blocked from Carl Sivan Tibi: \"****\"', 'flagged_comment', 1, '2026-03-03 02:48:19'),
 (28, 3, 'Blocked comment from Carl Sivan Tibi: \"fuck\"', 'flagged_comment', 1, '2026-03-03 02:53:38'),
 (29, 3, 'Blocked comment from Carl Sivan Tibi: \"fuck\"', 'flagged_comment', 1, '2026-03-03 02:55:00'),
-(30, 3, 'Blocked comment from Carl Sivan Tibi: \"puta\"', 'flagged_comment', 1, '2026-03-04 07:18:01');
+(30, 3, 'Blocked comment from Carl Sivan Tibi: \"puta\"', 'flagged_comment', 1, '2026-03-04 07:18:01'),
+(31, 3, 'Blocked comment from Angelo Concepcion: \"this is dumb\"', 'flagged_comment', 1, '2026-03-07 21:52:40'),
+(32, 3, 'Blocked comment from Angelo Concepcion: \"this is dumb\"', 'flagged_comment', 1, '2026-03-07 22:03:03'),
+(33, 3, 'Blocked comment from Angelo Concepcion: \"bobo\"', 'flagged_comment', 1, '2026-03-07 22:15:19'),
+(34, 3, 'Blocked comment from Carl Sivan Tibi: \"bobo\"', 'flagged_comment', 1, '2026-03-08 00:54:21'),
+(35, 3, 'Blocked comment from Carl Sivan Tibi: \"bobo\"', 'flagged_comment', 1, '2026-03-08 00:54:31'),
+(36, 3, 'Blocked comment from Carl Sivan Tibi: \"bobo\"', 'flagged_comment', 0, '2026-03-08 02:11:00');
 
 -- --------------------------------------------------------
 
@@ -298,6 +346,16 @@ CREATE TABLE `post_comments` (
   `comment_text` text NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `post_comments`
+--
+
+INSERT INTO `post_comments` (`id`, `post_id`, `user_id`, `comment_text`, `created_at`) VALUES
+(35, 3, 5, 'amazing', '2026-03-07 21:52:48'),
+(36, 3, 5, 'yess', '2026-03-07 22:03:00'),
+(37, 3, 3, 'Niceee', '2026-03-07 22:22:44'),
+(38, 3, 3, 'nice', '2026-03-08 00:54:18');
 
 -- --------------------------------------------------------
 
@@ -330,6 +388,12 @@ INSERT INTO `users` (`id`, `usn`, `fullname`, `email`, `password`, `role`, `prof
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `announcements`
+--
+ALTER TABLE `announcements`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `clubs`
@@ -431,10 +495,16 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `announcements`
+--
+ALTER TABLE `announcements`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `clubs`
 --
 ALTER TABLE `clubs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `club_members`
@@ -452,7 +522,7 @@ ALTER TABLE `club_memberships`
 -- AUTO_INCREMENT for table `club_posts`
 --
 ALTER TABLE `club_posts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `events`
@@ -464,13 +534,13 @@ ALTER TABLE `events`
 -- AUTO_INCREMENT for table `event_reminders`
 --
 ALTER TABLE `event_reminders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `event_responses`
 --
 ALTER TABLE `event_responses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `membership_requests`
@@ -482,7 +552,7 @@ ALTER TABLE `membership_requests`
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `moderator_messages`
@@ -494,13 +564,13 @@ ALTER TABLE `moderator_messages`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `post_comments`
 --
 ALTER TABLE `post_comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `users`

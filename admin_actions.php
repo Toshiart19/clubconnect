@@ -67,7 +67,7 @@ if ($action === 'save_club') {
     } else {
         // CREATE NEW
         $banner_val = !empty($file_name) ? "assetimages/$file_name" : "assetimages/default-banner.jpg";
-        $conn->query("INSERT INTO clubs (club_name, description, hex_color, banner_image) VALUES ('$name', '$desc', '$color', '$banner_val')");
+        $conn->query("INSERT INTO clubs (club_name, description, hex_color, logo) VALUES ('$name', '$desc', '$color', '$banner_val')");
     }
     header("Location: admin_dashboard.php");
     exit();
