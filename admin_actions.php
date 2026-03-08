@@ -24,7 +24,6 @@ $action = $_GET['action'] ?? '';
     POST PUBLIC ANNOUNCEMENT
 ================================ */
 if ($action === 'post_announcement') {
-    // Sanitize inputs to prevent SQL injection
     $title = $conn->real_escape_string($_POST['title']);
     $message = $conn->real_escape_string($_POST['message']);
     $admin_id = $_SESSION['user_id'];
@@ -35,9 +34,7 @@ if ($action === 'post_announcement') {
         header("Location: admin_dashboard.php?status=announced");
         exit();
     } else {
-        // This will show the exact SQL error if the table is missing or columns are wrong
-        echo "Error: " . $conn->error;
-        exit();
+        die("Error posting announcement: " . $conn->error);
     }
 }
 
@@ -45,32 +42,72 @@ if ($action === 'post_announcement') {
     SAVE CLUB (CREATE/UPDATE)
 ================================ */
 if ($action === 'save_club') {
-    $club_id = $conn->real_escape_string($_POST['club_id']);
+    $club_id = isset($_POST['club_id']) ? (int)$_POST['club_id'] : 0;
     $name = $conn->real_escape_string($_POST['club_name']);
     $desc = $conn->real_escape_string($_POST['description']);
     $color = $conn->real_escape_string($_POST['hex_color']);
 
     // Handle Image Upload
-    $banner_sql = "";
+    $banner_path = "";
     if (!empty($_FILES['banner_image']['name'])) {
         $target_dir = "assetimages/";
         $file_name = time() . "_" . basename($_FILES["banner_image"]["name"]);
         $target_file = $target_dir . $file_name;
         if (move_uploaded_file($_FILES["banner_image"]["tmp_name"], $target_file)) {
-            $banner_sql = ", banner_image = '$target_file'";
+            $banner_path = $target_file;
         }
     }
 
-    if (!empty($club_id)) {
+    if ($club_id > 0) {
         // UPDATE EXISTING
-        $conn->query("UPDATE clubs SET club_name='$name', description='$desc', hex_color='$color' $banner_sql WHERE id=$club_id");
+        $update_sql = "UPDATE clubs SET club_name='$name', description='$desc', hex_color='$color'";
+        if (!empty($banner_path)) {
+            $update_sql .= ", banner_image = '$banner_path'";
+        }
+        $update_sql .= " WHERE club_id=$club_id"; // Using club_id based on your schema
+        
+        if ($conn->query($update_sql)) {
+            header("Location: admin_dashboard.php?status=updated");
+        } else {
+            die("Update Error: " . $conn->error);
+        }
     } else {
         // CREATE NEW
-        $banner_val = !empty($file_name) ? "assetimages/$file_name" : "assetimages/default-banner.jpg";
-        $conn->query("INSERT INTO clubs (club_name, description, hex_color, logo) VALUES ('$name', '$desc', '$color', '$banner_val')");
+        $final_banner = !empty($banner_path) ? $banner_path : "assetimages/default-banner.jpg";
+        
+        // Note: I added 'banner_image' and 'status' set to 'active'
+        $insert_sql = "INSERT INTO clubs (club_name, description, hex_color, banner_image, status) 
+                       VALUES ('$name', '$desc', '$color', '$final_banner', 'active')";
+        
+        if ($conn->query($insert_sql)) {
+            header("Location: admin_dashboard.php?status=created");
+        } else {
+            die("Insert Error: " . $conn->error);
+        }
     }
-    header("Location: admin_dashboard.php");
     exit();
+}
+
+/* ===============================
+    DELETE CLUB
+================================ */
+if ($action === 'delete_club') {
+    if (isset($_GET['id'])) {
+        $id = (int)$_GET['id'];
+        
+        // Use a try-catch to prevent white screen on Foreign Key errors
+        try {
+            $sql = "DELETE FROM clubs WHERE club_id = $id";
+            if ($conn->query($sql)) {
+                header("Location: admin_dashboard.php?status=deleted");
+                exit();
+            } else {
+                echo "Error deleting record: " . $conn->error;
+            }
+        } catch (mysqli_sql_exception $e) {
+            die("Stop! You cannot delete this club because it has members or posts linked to it. Remove those first.");
+        }
+    }
 }
 
 /* ===============================
@@ -79,7 +116,7 @@ if ($action === 'save_club') {
 if ($action === 'delete_post') {
     $id = (int)$_GET['id'];
     $conn->query("DELETE FROM club_posts WHERE id = $id");
-    header("Location: admin_dashboard.php");
+    header("Location: admin_dashboard.php?status=post_deleted");
     exit();
 }
 ?>

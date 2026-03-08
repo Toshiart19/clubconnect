@@ -275,6 +275,19 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
             font-size: 13px;
             display: none;
         }
+        @media print {
+    /* Hides the print button and any navigation when the paper prints */
+    .no-print { 
+        display: none !important; 
+    }
+}
+
+.no-print-header {
+    background: #f4f4f4;
+    padding: 10px;
+    text-align: right;
+    border-bottom: 1px solid #ddd;
+}
 	</style>
 </head>
 <body>
@@ -360,6 +373,14 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
 				</div>
 
 				<div class="post-actions">
+                    <?php if ($is_assigned_moderator): ?>
+        <button type="button" 
+                onclick="openAttendance(<?php echo $pid; ?>)" 
+                class="btn-rsvp" 
+                style="background: #6366f1;">
+            <i data-lucide="printer" size="14"></i> Attendance
+        </button>
+    <?php endif; ?>
 					<form method="POST" onsubmit="submitRsvp(event, <?php echo $pid; ?>)" style="display:flex; gap:5px;">
 						<input type="hidden" name="post_id" value="<?php echo $pid; ?>">
 						<button type="submit" name="rsvp_status" value="joining" class="btn-rsvp btn-join">Join</button>
@@ -820,6 +841,23 @@ $has_pending = $conn->query("SELECT id FROM membership_requests WHERE user_id = 
             if (dropMenu) dropMenu.style.display = 'none';
         }
     });
+    
+function openAttendance(postId) {
+    if(!postId) {
+        alert("Error: Post ID not found.");
+        return;
+    }
+    const width = 800;
+    const height = 900;
+    const left = (screen.width / 2) - (width / 2);
+    const top = (screen.height / 2) - (height / 2);
+    
+    window.open(
+        'print_attendance.php?post_id=' + postId, 
+        'AttendanceSheet', 
+        `width=${width},height=${height},top=${top},left=${left},toolbar=no,menubar=no,scrollbars=yes`
+    );
+}
 </script>
 
 <?php if($is_assigned_moderator): ?>
