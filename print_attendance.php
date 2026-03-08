@@ -55,14 +55,17 @@ $result = $conn->query($sql);
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #000; padding: 12px; text-align: left; }
         th { background-color: #f2f2f2; }
-        
+        table td {
+    height: 30px; /* Gives a consistent height for handwriting */
+    vertical-align: middle;
+}
         .col-num { width: 30px; text-align: center; }
         .col-sig { width: 150px; }
         .col-time { width: 100px; }
 
         /* Signature Section */
         .footer-sig { margin-top: 50px; display: flex; justify-content: space-between; }
-        .sig-line { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 5px; margin-top: 40px; }
+        .sig-line { border-top: 1px solid #000; width: 150px; text-align: center; padding-top: 5px; margin-top: 40px; }
 
         /* Print Controls */
         .no-print-bar { 
@@ -103,30 +106,29 @@ $result = $conn->query($sql);
                 <th>Student Name</th>
                 <th>Student ID / USN</th>
                 <th class="col-time">Time In</th>
+                <th class="col-time">Time Out</th>
                 <th class="col-sig">Signature</th>
             </tr>
         </thead>
         <tbody>
-            <?php 
-            if ($result->num_rows > 0):
-                $count = 1;
-                while($row = $result->fetch_assoc()): 
-            ?>
+       <?php 
+    if ($result->num_rows > 0):
+        $count = 1;
+        while($row = $result->fetch_assoc()): 
+    ?>
         <tr>
-    <td class="col-num"><?php echo $count++; ?></td>
-    <td><?php echo htmlspecialchars($row['fullname']); ?></td>
-    <td><?php echo htmlspecialchars($row['usn']); ?></td>
-    <td></td>
-     <td></td>
-     </tr>
-            <?php 
-                endwhile; 
-            else:
-            ?>
-            <tr>
-                <td colspan="5" style="text-align:center; padding: 30px;">No students have joined this event yet.</td>
-            </tr>
-            <?php endif; ?>
+            <td class="col-num"><?php echo $count++; ?></td>
+            <td><?php echo htmlspecialchars($row['fullname']); ?></td>
+            <td><?php echo htmlspecialchars($row['usn']); ?></td>
+            <td></td> <td></td> <td class="col-sig"></td> </tr>
+    <?php 
+        endwhile; 
+    else:
+    ?>
+        <tr>
+            <td colspan="6" style="text-align:center; padding: 30px;">No students have joined this event yet.</td>
+        </tr>
+    <?php endif; ?>
         </tbody>
     </table>
 
