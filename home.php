@@ -225,36 +225,60 @@ $messages = $conn->query("
             background: rgba(179,18,23,0.08);
         }
         .announcement-banner {
-    max-width: 1200px;
-    margin: -20px auto 30px auto; /* Pulls it up slightly toward the topbar */
-    background: linear-gradient(135deg, #b31217, #e52d27);
-    color: white;
-    padding: 20px 30px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(179, 18, 23, 0.4);
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    animation: slideDown 0.5s ease-out;
-}
+			max-width: 1200px;
+			margin: -20px auto 30px auto; /* Pulls it up slightly toward the topbar */
+			background: linear-gradient(135deg, #b31217, #e52d27);
+			color: white;
+			padding: 20px 30px;
+			border-radius: 16px;
+			box-shadow: 0 10px 30px rgba(179, 18, 23, 0.4);
+			display: flex;
+			align-items: center;
+			gap: 20px;
+			animation: slideDown 0.5s ease-out;
+		}
 
-@keyframes slideDown {
-    from { transform: translateY(-20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
+		@keyframes slideDown {
+			from { transform: translateY(-20px); opacity: 0; }
+			to { transform: translateY(0); opacity: 1; }
+		}
 
-.announcement-content h4 {
-    font-size: 1.1rem;
-    margin-bottom: 5px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
+		.announcement-content h4 {
+			font-size: 1.1rem;
+			margin-bottom: 5px;
+			text-transform: uppercase;
+			letter-spacing: 1px;
+		}
 
-.announcement-content p {
-    font-size: 0.95rem;
-    opacity: 0.9;
-    line-height: 1.4;
-}
+		.announcement-content p {
+			font-size: 0.95rem;
+			opacity: 0.9;
+			line-height: 1.4;
+		}
+
+        /* --- REAL-TIME TOAST NOTIFICATIONS --- */
+        .toast-notification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 6000;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            cursor: pointer;
+        }
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
     </style>
 </head>
 <body id="body">
@@ -414,6 +438,14 @@ $messages = $conn->query("
     </div>
 </div>
 
+<div id="globalToast" class="toast-notification">
+	<i data-lucide="bell" size="20"></i>
+	<div id="toastContent" style="display:flex; flex-direction:column; gap:2px;">
+		<strong id="toastTitle" style="font-size:14px;">Title</strong>
+		<span id="toastDesc" style="font-size:12px; opacity:0.9;">Description</span>
+	</div>
+</div>
+
 <script>
     lucide.createIcons();
 
@@ -472,7 +504,7 @@ $messages = $conn->query("
 
     window.onload = () => {
         if (localStorage.getItem("theme") === "light") document.getElementById("body").classList.add("light-mode");
-        fetchNotifications();
+
     };
 
     // Modal & Real-time Logic
@@ -482,11 +514,8 @@ $messages = $conn->query("
     function openModal(id){
         document.getElementById(id).style.display = "flex";
         if(id === "notifModal" || id === "msgModal") {
-            // Tell server to mark all as read
             fetch("mark_read.php?type=" + (id === "notifModal" ? "notif" : "msg"))
-            .then(() => {
-                setTimeout(fetchNotifications, 500);
-            });
+                .then(() => { setTimeout(fetchNotifications, 500); });
         }
     }
 
@@ -494,54 +523,87 @@ $messages = $conn->query("
         document.getElementById(id).style.display = "none";
     }
 
+    // function to trigger the toast pop-up
+    function showToast(title, desc, modalId) {
+        const toast = document.getElementById('globalToast');
+        document.getElementById('toastTitle').innerText = title;
+
+        // truncate long messages so the toast doesn't get huge
+        document.getElementById('toastDesc').innerText = desc.length > 40 ? desc.substring(0, 40) + '...' : desc;
+
+        toast.onclick = () => {
+            toast.classList.remove('show');
+            openModal(modalId);
+        };
+
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 5000); // hide after 5 seconds
+    }
+
     function fetchNotifications(){
         fetch("fetch_notifications.php")
-        .then(res => res.json())
-        .then(data => {
-            // Update Notification Badge
-            const nBadge = document.getElementById("notifBadge");
-            if(data.unreadNotifs > 0){
-                nBadge.style.display = "inline-block";
-                nBadge.innerText = data.unreadNotifs;
-                if(data.unreadNotifs > lastNotifCount) {
-                    nBadge.classList.add("pulse");
-                    setTimeout(() => nBadge.classList.remove("pulse"), 600);
+            .then(res => res.json())
+            .then(data => {
+                // safeguard: check for both camelCase and snake_case, default to 0
+                const currentUnreadNotifs = data.unreadNotifs || data.unread_notifs || 0;
+                const currentUnreadMsgs = data.unreadMsgs || data.unread_msgs || 0;
+
+                // --- HANDLE NOTIFICATIONS ---
+                const nBadge = document.getElementById("notifBadge");
+                if (nBadge) {
+                    if(currentUnreadNotifs > 0){
+                        nBadge.style.display = "inline-block";
+                        nBadge.innerText = currentUnreadNotifs;
+
+                        if(currentUnreadNotifs > lastNotifCount) {
+                            nBadge.classList.add("pulse");
+                            setTimeout(() => nBadge.classList.remove("pulse"), 600);
+                            if(data.notifications && data.notifications.length > 0) {
+                                showToast("System Notification", data.notifications[0].message, 'notifModal');
+                            }
+                        }
+                    } else { nBadge.style.display = "none"; }
                 }
-            } else { nBadge.style.display = "none"; }
-            lastNotifCount = data.unreadNotifs;
+                lastNotifCount = currentUnreadNotifs;
 
-            // Update Message Badge
-            const mBadge = document.getElementById("msgBadge");
-            if(data.unreadMsgs > 0){
-                mBadge.style.display = "inline-block";
-                mBadge.innerText = data.unreadMsgs;
-                if(data.unreadMsgs > lastMsgCount) {
-                    mBadge.classList.add("pulse");
-                    setTimeout(() => mBadge.classList.remove("pulse"), 600);
+                // --- HANDLE MESSAGES ---
+                const mBadge = document.getElementById("msgBadge");
+                if (mBadge) {
+                    if(currentUnreadMsgs > 0){
+                        mBadge.style.display = "inline-block";
+                        mBadge.innerText = currentUnreadMsgs;
+
+                        if(currentUnreadMsgs > lastMsgCount) {
+                            mBadge.classList.add("pulse");
+                            setTimeout(() => mBadge.classList.remove("pulse"), 600);
+                            if(data.messages && data.messages.length > 0) {
+                                showToast("New message from " + data.messages[0].sender_name, data.messages[0].message, 'msgModal');
+                            }
+                        }
+                    } else { mBadge.style.display = "none"; }
                 }
-            } else { mBadge.style.display = "none"; }
-            lastMsgCount = data.unreadMsgs;
+                lastMsgCount = currentUnreadMsgs;
 
-            // Update Notification Modal Content
-            const nContainer = document.getElementById("notifContainer");
-            if(nContainer) {
-                nContainer.innerHTML = data.notifications.length === 0 ? "<div class='modal-item'>No notifications yet.</div>" : "";
-                data.notifications.forEach(n => {
-                    nContainer.innerHTML += `<div class="modal-item ${n.is_read==0?'unread-item':''}">
-                        ${n.message}<small>${n.created_at}</small></div>`;
-                });
-            }
+                // --- UPDATE MODAL LISTS ---
+                const nContainer = document.getElementById("notifContainer");
+                if(nContainer) {
+                    nContainer.innerHTML = data.notifications.length === 0 ? "<div class='modal-item'>No notifications yet.</div>" : "";
+                    data.notifications.forEach(n => {
+                        nContainer.innerHTML += `<div class="modal-item ${n.is_read==0?'unread-item':''}">
+                        ${n.message}<br><small>${n.created_at}</small></div>`;
+                    });
+                }
 
-            // Update Message Modal Content
-            const mContainer = document.getElementById("msgContainer");
-            if(mContainer) {
-                mContainer.innerHTML = data.messages.length === 0 ? "<div class='modal-item'>No messages yet.</div>" : "";
-                data.messages.forEach(m => {
-                    mContainer.innerHTML += `<div class="modal-item ${m.is_read==0?'unread-item':''}">
-                        <strong>${m.sender_name}</strong><br>${m.message}<small>${m.created_at}</small></div>`;
-                });
-            }
-        });
+                const mContainer = document.getElementById("msgContainer");
+                if(mContainer) {
+                    mContainer.innerHTML = data.messages.length === 0 ? "<div class='modal-item'>No messages yet.</div>" : "";
+                    data.messages.forEach(m => {
+                        mContainer.innerHTML += `<div class="modal-item ${m.is_read==0?'unread-item':''}">
+                        <strong>${m.sender_name}</strong><br>${m.message}<br><small>${m.created_at}</small></div>`;
+                    });
+                }
+            })
+            .catch(err => console.error("Error fetching notifications:", err));
     }
 
     setInterval(fetchNotifications, 5000);
