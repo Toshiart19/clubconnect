@@ -107,7 +107,7 @@ $posts_res = $conn->query("SELECT p.*, c.club_name, c.hex_color FROM club_posts 
 <div class="topbar" style="display:flex; justify-content: space-between; align-items: center; position:fixed; top:0; left:0; width:100%; height: 70px; padding: 0 4%; background: rgba(0,0,0,0.6); backdrop-filter:blur(15px); z-index:1000; box-sizing: border-box; border-bottom: 1px solid rgba(255,255,255,0.1);">
     
     <div style="display:flex; align-items:center; gap:12px; min-width: max-content;">
-        <img src="/clubconnect/assetimages/cc.png" height="32" style="filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">
+        <img src="/clubconnect/assetimages/ACLC.png" height="32" style="filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">
         <span style="font-weight:800; letter-spacing: 1px; font-size: 14px; text-transform: uppercase; white-space: nowrap;">Admin Dashboard</span>
     </div>
     

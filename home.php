@@ -285,7 +285,7 @@ $messages = $conn->query("
 
 <div class="topbar">
     <div class="logo" style="display:flex; align-items:center; gap:10px; font-weight:600;">
-        <img src="/clubconnect/assetimages/cc.png" alt="Logo" style="height:35px;">
+        <img src="/clubconnect/assetimages/ACLC.png" alt="Logo" style="height:35px;">
         <span>ClubConnect</span>
     </div>
 

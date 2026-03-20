@@ -109,7 +109,7 @@ body {
 }
 
 .login-logo img {
-    height:120px;
+    height:100px;
     width:auto;
     filter:drop-shadow(0 4px 10px rgba(0,0,0,0.3));
     margin-bottom:20px;
@@ -186,7 +186,7 @@ button:hover {
 
     <div class="left-panel">
         <div class="login-logo">
-            <img src="/clubconnect/assetimages/cc.png" alt="ClubConnect Logo">
+            <img src="/clubconnect/assetimages/ACLC.png" alt="ClubConnect Logo">
         </div>
         <h1>Welcome Back!</h1>
         <p>Access your student portal, discover communities, and stay updated with school activities.</p>
