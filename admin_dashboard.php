@@ -17,6 +17,12 @@ $total_posts = $conn->query("SELECT COUNT(*) as count FROM club_posts")->fetch_a
 $clubs_res = $conn->query("SELECT * FROM clubs");
 // Fetch only the 20 most recent posts to keep the dashboard snappy
 $posts_res = $conn->query("SELECT p.*, c.club_name, c.hex_color FROM club_posts p JOIN clubs c ON p.club_id = c.id ORDER BY p.created_at DESC LIMIT 20");
+
+// Auto-delete announcements older than 2 months
+$conn->query("DELETE FROM announcements WHERE created_at < DATE_SUB(NOW(), INTERVAL 2 MONTH)");
+
+// Fetch clubs for the dropdown in the modal
+$clubs_res_dropdown = $conn->query("SELECT id, club_name FROM clubs ORDER BY club_name ASC");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -220,46 +226,64 @@ $posts_res = $conn->query("SELECT p.*, c.club_name, c.hex_color FROM club_posts 
 <script>
     lucide.createIcons();
 
-    // CALENDAR INITIALIZATION
-    document.addEventListener('DOMContentLoaded', function() {
-        var calendarEl = document.getElementById('calendar');
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            events: 'fetch_admin_events.php',
-            height: 550,
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: ''
-            },
-            // INTERACTIVE MARKERS (Like calendar.php)
-            eventDidMount: function(info) {
-                const color = info.event.extendedProps.color || '#b31217';
-                const dot = `<span class="event-dot" style="background:${color}"></span>`;
-                const title = info.event.title;
-                info.el.querySelector('.fc-event-main').innerHTML = `${dot} ${title}`;
-            },
-            // CUSTOM POPUP ON CLICK
-            eventClick: function(info) {
-                const event = info.event;
-                const props = event.extendedProps;
+   // CALENDAR INITIALIZATION
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        events: 'fetch_admin_events.php',
+        height: 550,
+        displayEventTime: false, // REMOVES THE TIME (e.g., 12a)
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: ''
+        },
+        eventDidMount: function(info) {
+            const color = info.event.extendedProps.color || '#e52d27';
+            
+            // Create only the colored dot
+            const dot = `<span style="
+                width: 12px; 
+                height: 12px; 
+                background-color: ${color}; 
+                border-radius: 50%; 
+                display: inline-block; 
+                border: 1px solid rgba(255,255,255,0.4);
+                cursor: pointer;
+                transition: transform 0.2s;
+            " title="${info.event.title}"></span>`;
 
-                document.getElementById('popupTitle').innerText = event.title;
-                document.getElementById('popupClubName').innerText = props.club;
-                document.getElementById('popupDescription').innerText = props.description || "No details provided.";
-                document.getElementById('popupClubColor').style.backgroundColor = props.color;
-                
-                // Hook up the delete button in the popup
-                document.getElementById('deleteEventFromPopup').onclick = function() {
-                    deletePost(props.post_id);
-                };
-
-                document.getElementById('eventDetailModal').style.display = 'flex';
+            // Inject into the FullCalendar element
+            const mainEl = info.el.querySelector('.fc-event-main');
+            if (mainEl) {
+                mainEl.style.display = 'flex';
+                mainEl.style.justifyContent = 'center'; // Centers the dot in the day box
+                mainEl.innerHTML = dot;
             }
-        });
-        calendar.render();
-    });
+            
+            // Clean up FullCalendar's default background/border
+            info.el.style.backgroundColor = 'transparent';
+            info.el.style.border = 'none';
+        },
+        eventClick: function(info) {
+            const event = info.event;
+            const props = event.extendedProps;
 
+            document.getElementById('popupTitle').innerText = event.title;
+            document.getElementById('popupClubName').innerText = props.club;
+            document.getElementById('popupDescription').innerText = props.description || "No details provided.";
+            document.getElementById('popupClubColor').style.backgroundColor = props.color;
+            
+            document.getElementById('deleteEventFromPopup').onclick = function() {
+                deletePost(props.post_id);
+            };
+
+            document.getElementById('eventDetailModal').style.display = 'flex';
+        }
+    });
+    calendar.render();
+});
     function closeEventModal() { document.getElementById('eventDetailModal').style.display = 'none'; }
     function deletePost(id) { if(confirm('Delete this post and event?')) window.location.href='admin_actions.php?action=delete_post&id='+id; }
     
@@ -312,24 +336,40 @@ window.onclick = function(e) {
 }
 </script>
 <div id="announceModal" class="modal">
-    <div class="modal-content" style="border-color: #16a34a;"> <div class="section-header">
+    <div class="modal-content" style="border-color: #16a34a;"> 
+        <div class="section-header">
             <div style="display:flex; align-items:center; gap:10px;">
                 <i data-lucide="megaphone" style="color:#16a34a;"></i>
                 <h3 style="margin:0;">Global Broadcast</h3>
             </div>
             <span onclick="closeAnnounceModal()" style="cursor:pointer; font-size: 24px;">&times;</span>
         </div>
-        <p style="font-size: 13px; opacity: 0.6; margin-bottom: 20px;">This message will appear at the top of the feed for all students and moderators.</p>
+        <p style="font-size: 13px; opacity: 0.6; margin-bottom: 20px;">Announcements are stackable and auto-delete after 2 months.</p>
         
         <form action="admin_actions.php?action=post_announcement" method="POST">
             <div style="margin-bottom:15px;">
-                <label style="display:block; font-size:12px; margin-bottom:5px; opacity: 0.8;">Subject / Title</label>
-                <input type="text" name="title" placeholder="e.g., Campus Maintenance or Event Update" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; box-sizing: border-box;" required>
+                <label style="display:block; font-size:12px; margin-bottom:5px; opacity: 0.8;">Post as Club (Optional)</label>
+                <select name="club_id" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; box-sizing: border-box;">
+                    <option value="0">General (No Club)</option>
+                    <?php 
+                    // Reset pointer and loop through clubs for dropdown
+                    $clubs_res_dropdown->data_seek(0);
+                    while($c = $clubs_res_dropdown->fetch_assoc()): ?>
+                        <option value="<?php echo $c['id']; ?>"><?php echo htmlspecialchars($c['club_name']); ?></option>
+                    <?php endwhile; ?>
+                </select>
             </div>
+
+            <div style="margin-bottom:15px;">
+                <label style="display:block; font-size:12px; margin-bottom:5px; opacity: 0.8;">Subject / Title</label>
+                <input type="text" name="title" placeholder="e.g., Campus Maintenance" style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; box-sizing: border-box;" required>
+            </div>
+
             <div style="margin-bottom:20px;">
                 <label style="display:block; font-size:12px; margin-bottom:5px; opacity: 0.8;">Message Details</label>
-                <textarea name="message" rows="5" placeholder="Write your announcement here..." style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; resize:none; box-sizing: border-box;" required></textarea>
+                <textarea name="message" rows="5" placeholder="Write details here..." style="width:100%; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px; resize:none; box-sizing: border-box;" required></textarea>
             </div>
+
             <button type="submit" style="width:100%; padding:14px; background:#16a34a; border:none; color:white; border-radius:10px; cursor:pointer; font-weight:bold; font-size: 16px;">
                 Broadcast Announcement
             </button>

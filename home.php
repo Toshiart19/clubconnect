@@ -17,6 +17,14 @@ $user_id = $_SESSION['user_id'];
 $user_role = strtolower($_SESSION['role']);
 $fullname = $_SESSION['fullname'];
 
+// Fetch announcements joined with clubs to get the club name/color if available
+$announcements_res = $conn->query("
+    SELECT a.*, c.club_name, c.hex_color 
+    FROM announcements a 
+    LEFT JOIN clubs c ON a.club_id = c.id 
+    ORDER BY a.created_at DESC
+");
+
 /* ===============================
     GET REAL COUNTS (UNREAD ONLY)
 ================================ */
@@ -47,6 +55,7 @@ $messages = $conn->query("
     ORDER BY m.created_at DESC 
     LIMIT 5
 ");
+$clubs_query = $conn->query("SELECT * FROM clubs ORDER BY club_name ASC");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -55,231 +64,247 @@ $messages = $conn->query("
     <title>ClubConnect - Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        :root {
-            --bg-gradient: linear-gradient(-45deg, #0f02ff, #1b4ba5, #9b2f9f, #b31217, #e52d27);
-            --card-bg: #000;
-            --text-color: #fff;
-            --topbar-bg: rgba(0,0,0,0.35);
-            --input-bg: rgba(255,255,255,0.1);
-            --accent: #b31217;
-        }
+   <style>
+    :root {
+        /* TOPBAR GRADIENT (Branding) */
+        --brand-gradient: linear-gradient(-45deg, #0f02ff, #1b4ba5, #9b2f9f, #b31217, #e52d27);
+        
+        /* DEFAULT LIGHT MODE (White Body) */
+        --bg-color: #ffffff;
+        --text-color: #000000;
+        --card-bg: #f8f9fa;
+        --topbar-bg: rgba(255, 255, 255, 0.8);
+        --input-bg: rgba(0, 0, 0, 0.05);
+        --accent: #b31217;
+    }
 
-        body.light-mode {
-            --bg-gradient: linear-gradient(-45deg, #f0f2f5, #e0e0e0, #ffffff);
-            --card-bg: #ffffff;
-            --text-color: #333;
-            --topbar-bg: rgba(255,255,255,0.8);
-            --input-bg: rgba(0,0,0,0.05);
-        }
+    /* DARK MODE (Greyish Blue Body) */
+    /* This applies when the .light-mode class is NOT present */
+    body:not(.light-mode) {
+        --bg-color: #1a1c23; /* Very dark greyish blue */
+        --text-color: #ffffff;
+        --card-bg: #242731;
+        --topbar-bg: rgba(0, 0, 0, 0.35);
+        --input-bg: rgba(255, 255, 255, 0.1);
+    }
 
-        *{ margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', sans-serif; transition: background 0.3s, color 0.3s; }
+    * { 
+        margin: 0; 
+        padding: 0; 
+        box-sizing: border-box; 
+        font-family: 'Segoe UI', sans-serif; 
+        transition: background 0.3s ease, color 0.3s ease; 
+    }
 
-        body{
-            background: var(--bg-gradient);
-            background-size:400% 400%;
-            animation: gradientMove 12s ease infinite;
-            color: var(--text-color);
-            overflow-x:hidden;
-            padding-top:100px;
-            min-height: 100vh;
-        }
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        overflow-x: hidden;
+        padding-top: 100px;
+        min-height: 100vh;
+    }
 
-        @keyframes gradientMove{
-            0%{background-position:0% 50%;}
-            50%{background-position:100% 50%;}
-            100%{background-position:0% 50%;}
-        }
+    @keyframes gradientMove {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
 
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 30px;
-            background: var(--topbar-bg);
-            backdrop-filter: blur(12px);
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 30px;
+        
+        /* Gradient Animation pinned to Topbar */
+        background: var(--brand-gradient);
+        background-size: 400% 400%;
+        animation: gradientMove 12s ease infinite;
+        
+        backdrop-filter: blur(12px);
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
 
-        .topbar-right { display: flex; align-items: center; gap: 20px; }
+    /* Keep Topbar elements white for contrast against the gradient */
+    .topbar .logo, 
+    .topbar .icon-wrapper, 
+    .topbar .role-badge,
+    .topbar span { 
+        color: #ffffff !important; 
+    }
 
-        .user-profile-img {
-            width: 40px; height: 40px; border-radius: 50%;
-            object-fit: cover; border: 2px solid var(--accent);
-            box-shadow: 0 0 10px rgba(179, 18, 23, 0.3);
-        }
+    .topbar-right { display: flex; align-items: center; gap: 20px; }
 
-        .mod-indicators { display: flex; gap: 15px; align-items: center; }
-        .icon-wrapper { position: relative; cursor: pointer; color: var(--text-color); opacity: 0.8; transition: 0.3s; }
-        .icon-wrapper:hover { opacity: 1; transform: translateY(-2px); }
-        .badge {
-            position: absolute; top: -5px; right: -8px;
-            background: var(--accent); color: white;
-            border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold;
-            display: inline-block;
-        }
+    .user-profile-img {
+        width: 40px; height: 40px; border-radius: 50%;
+        object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
 
-        .search-container { position: relative; margin: 20px auto; max-width: 500px; width: 90%; }
-        .search-bar {
-            width: 100%; padding: 12px 20px 12px 45px; border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.2); background: var(--input-bg);
-            color: var(--text-color); outline: none; backdrop-filter: blur(5px);
-        }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); opacity: 0.6; }
+    .mod-indicators { display: flex; gap: 15px; align-items: center; }
+    
+    .icon-wrapper { 
+        position: relative; 
+        cursor: pointer; 
+        color: #ffffff; 
+        opacity: 0.9; 
+        transition: 0.3s; 
+    }
+    .icon-wrapper:hover { opacity: 1; transform: translateY(-2px); }
 
-        .dropdown { position: relative; }
-        .dropdown-content {
-            display: none; position: absolute; right: 0; top: 45px;
-            background: var(--card-bg); min-width: 200px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2); border-radius: 12px;
-            overflow: hidden; z-index: 1001;
-        }
-        .dropdown-content a, .dropdown-content div {
-            color: var(--text-color); padding: 12px 16px; text-decoration: none;
-            display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px;
-        }
-        .dropdown-content a:hover, .dropdown-content div:hover { background: rgba(179, 18, 23, 0.1); }
-        .show { display: block; }
+    .badge {
+        position: absolute; top: -5px; right: -8px;
+        background: #ffffff; color: var(--accent);
+        border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold;
+        display: inline-block;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
 
-        .carousel-container { position:relative; padding:20px 0; max-width: 1400px; margin: 0 auto; }
-        .carousel { display:flex; gap:25px; overflow-x:hidden; scroll-behavior:smooth; padding:40px 100px; }
-        .card {
-            width:280px; height:380px; border-radius:25px; overflow:hidden;
-            position:relative; flex-shrink:0; transition:0.4s ease; background: #222; cursor: pointer;
-        }
-        .card.hidden { display: none; }
-        .card img { width:100%; height:100%; object-fit:cover; transition: 0.5s; }
-        .card:hover img { transform: scale(1.1); }
-        .card.active { transform: scale(1.08); border: 4px solid var(--accent); box-shadow: 0 15px 35px rgba(179, 18, 23, 0.3); }
-        .card .overlay { position:absolute; bottom:0; width:100%; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent); color: white; }
+    .search-container { position: relative; margin: 20px auto; max-width: 500px; width: 90%; }
+    .search-bar {
+        width: 100%; padding: 12px 20px 12px 45px; border-radius: 30px;
+        border: 1px solid rgba(128, 128, 128, 0.2); background: var(--input-bg);
+        color: var(--text-color); outline: none; backdrop-filter: blur(5px);
+    }
+    .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); opacity: 0.6; }
 
-        .scroll-btn {
-            position:absolute; top:50%; transform:translateY(-50%);
-            width:55px; height:55px; border-radius:50%; border:none;
-            cursor:pointer; z-index:100; background: var(--accent); color:white;
-            display: flex; align-items: center; justify-content: center; font-size: 20px;
-        }
-        .left-btn { left: 20px; }
-        .right-btn { right: 20px; }
+    .dropdown { position: relative; }
+    .dropdown-content {
+        display: none; position: absolute; right: 0; top: 45px;
+        background: var(--card-bg); min-width: 200px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2); border-radius: 12px;
+        overflow: hidden; z-index: 1001;
+        border: 1px solid rgba(128,128,128,0.1);
+    }
+    .dropdown-content a, .dropdown-content div {
+        color: var(--text-color); padding: 12px 16px; text-decoration: none;
+        display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px;
+    }
+    .dropdown-content a:hover, .dropdown-content div:hover { background: rgba(179, 18, 23, 0.1); }
+    .show { display: block; }
 
-        .icon-btn {
-            background: var(--accent); color: white; padding: 8px 15px;
-            border: none; border-radius: 10px; font-size: 14px;
-            display: flex; align-items: center; gap: 5px; cursor: pointer;
-        }
+    .carousel-container { position:relative; padding:20px 0; max-width: 1400px; margin: 0 auto; }
+    .carousel { display:flex; gap:25px; overflow-x:hidden; scroll-behavior:smooth; padding:40px 100px; }
+    .card {
+        width:280px; height:380px; border-radius:25px; overflow:hidden;
+        position:relative; flex-shrink:0; transition:0.4s ease; 
+        background: var(--card-bg); cursor: pointer;
+        border: 1px solid rgba(128,128,128,0.1);
+    }
+    .card.hidden { display: none; }
+    .card img { width:100%; height:100%; object-fit:cover; transition: 0.5s; }
+    .card:hover img { transform: scale(1.1); }
+    .card.active { transform: scale(1.08); border: 4px solid var(--accent); box-shadow: 0 15px 35px rgba(179, 18, 23, 0.3); }
+    .card .overlay { position:absolute; bottom:0; width:100%; padding:20px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent); color: white; }
 
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 2000;
-            left: 0; top: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(5px);
-            justify-content: center;
-            align-items: center;
-        }
+    .scroll-btn {
+        position:absolute; top:50%; transform:translateY(-50%);
+        width:55px; height:55px; border-radius:50%; border:none;
+        cursor:pointer; z-index:100; background: var(--accent); color:white;
+        display: flex; align-items: center; justify-content: center; font-size: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .left-btn { left: 20px; }
+    .right-btn { right: 20px; }
 
-        .modal-content {
-            background: var(--card-bg);
-            width: 400px;
-            max-height: 500px;
-            overflow-y: auto;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
+    .icon-btn {
+        background: rgba(255, 255, 255, 0.2); color: white; padding: 8px 15px;
+        border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 10px; font-size: 14px;
+        display: flex; align-items: center; gap: 5px; cursor: pointer;
+    }
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        justify-content: center;
+        align-items: center;
+    }
 
-        .close-btn { cursor: pointer; font-size: 18px; color: var(--accent); }
+    .modal-content {
+        background: var(--card-bg);
+        width: 400px;
+        max-height: 500px;
+        overflow-y: auto;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        border: 1px solid rgba(128,128,128,0.2);
+    }
 
-        .modal-item {
-            padding: 12px;
-            border-bottom: 1px solid rgba(128,128,128,0.2);
-            font-size: 14px;
-        }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        font-weight: bold;
+        color: var(--text-color);
+    }
 
-        .modal-item small { opacity: 0.6; display: block; margin-top: 5px; }
+    .close-btn { cursor: pointer; font-size: 18px; color: var(--accent); }
 
-        .pulse { animation: pulseAnim 0.6s ease; }
-        @keyframes pulseAnim {
-            0%{transform:scale(1);}
-            50%{transform:scale(1.3);}
-            100%{transform:scale(1);}
-        }
+    .modal-item {
+        padding: 12px;
+        border-bottom: 1px solid rgba(128,128,128,0.2);
+        font-size: 14px;
+        color: var(--text-color);
+    }
 
-        .unread-item {
-            border-left: 4px solid var(--accent);
-            background: rgba(179,18,23,0.08);
-        }
-        .announcement-banner {
-			max-width: 1200px;
-			margin: -20px auto 30px auto; /* Pulls it up slightly toward the topbar */
-			background: linear-gradient(135deg, #b31217, #e52d27);
-			color: white;
-			padding: 20px 30px;
-			border-radius: 16px;
-			box-shadow: 0 10px 30px rgba(179, 18, 23, 0.4);
-			display: flex;
-			align-items: center;
-			gap: 20px;
-			animation: slideDown 0.5s ease-out;
-		}
+    .modal-item small { opacity: 0.6; display: block; margin-top: 5px; }
 
-		@keyframes slideDown {
-			from { transform: translateY(-20px); opacity: 0; }
-			to { transform: translateY(0); opacity: 1; }
-		}
+    .pulse { animation: pulseAnim 0.6s ease; }
+    @keyframes pulseAnim {
+        0%{transform:scale(1);}
+        50%{transform:scale(1.3);}
+        100%{transform:scale(1);}
+    }
 
-		.announcement-content h4 {
-			font-size: 1.1rem;
-			margin-bottom: 5px;
-			text-transform: uppercase;
-			letter-spacing: 1px;
-		}
+    .unread-item {
+        border-left: 4px solid var(--accent);
+        background: rgba(179,18,23,0.08);
+    }
 
-		.announcement-content p {
-			font-size: 0.95rem;
-			opacity: 0.9;
-			line-height: 1.4;
-		}
+    /* Announcements and Banner Adjustments */
+    .announcement-card {
+        background: var(--card-bg);
+        border-radius: 15px;
+        padding: 25px;
+        color: var(--text-color);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        border: 1px solid rgba(128,128,128,0.1);
+    }
 
-        /* --- REAL-TIME TOAST NOTIFICATIONS --- */
-        .toast-notification {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: var(--accent);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            z-index: 6000;
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            cursor: pointer;
-        }
-        .toast-notification.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-    </style>
+    .toast-notification {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: var(--accent);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 50px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        z-index: 6000;
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        cursor: pointer;
+    }
+    .toast-notification.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+</style>
 </head>
 <body id="body">
 
@@ -341,20 +366,165 @@ $messages = $conn->query("
         </div>
     </div>
 </div>
-<?php if ($latest_announcement): ?>
-    <div class="announcement-banner">
-        <div style="background: rgba(255,255,255,0.2); padding: 12px; border-radius: 12px;">
-            <i data-lucide="megaphone" size="28"></i>
-        </div>
-        <div class="announcement-content">
-            <h4>Admin Update: <?php echo htmlspecialchars($latest_announcement['title']); ?></h4>
-            <p><?php echo nl2br(htmlspecialchars($latest_announcement['message'])); ?></p>
-            <small style="font-size: 10px; opacity: 0.7; display: block; margin-top: 8px;">
-                Posted on <?php echo date('F j, Y - g:i A', strtotime($latest_announcement['created_at'])); ?>
-            </small>
-        </div>
+<?php if ($announcements_res && $announcements_res->num_rows > 0): ?>
+<div class="announcement-slider">
+    <div class="slides-container">
+        <?php 
+        $count = 0;
+        while($ann = $announcements_res->fetch_assoc()): 
+            $active = ($count === 0) ? 'active' : '';
+            $headerColor = !empty($ann['hex_color']) ? $ann['hex_color'] : '#16a34a';
+        ?>
+            <div class="announcement-slide <?php echo $active; ?>" data-index="<?php echo $count; ?>">
+                <div class="announcement-card" style="border-top: 5px solid <?php echo $headerColor; ?>;">
+                    <div class="ann-header">
+                        <span class="ann-tag" style="background: <?php echo $headerColor; ?>;">
+                            <?php echo !empty($ann['club_name']) ? htmlspecialchars($ann['club_name']) : 'GLOBAL BROADCAST'; ?>
+                        </span>
+                        <small class="ann-date"><?php echo date("M d, Y", strtotime($ann['created_at'])); ?></small>
+                    </div>
+                    <h2><?php echo htmlspecialchars($ann['title']); ?></h2>
+                    <p><?php echo nl2br(htmlspecialchars($ann['message'])); ?></p>
+                </div>
+            </div>
+        <?php 
+        $count++;
+        endwhile; 
+        ?>
     </div>
+
+    <?php if ($count > 1): ?>
+    <div class="slider-controls">
+        <button onclick="moveSlide(-1)" class="control-btn">❮</button>
+        <button onclick="moveSlide(1)" class="control-btn">❯</button>
+    </div>
+    <div class="slider-dots">
+        <?php for($i=0; $i<$count; $i++): ?>
+            <span class="dot <?php echo ($i===0)?'active':''; ?>" onclick="goToSlide(<?php echo $i; ?>)"></span>
+        <?php endfor; ?>
+    </div>
+    <?php endif; ?>
+</div>
 <?php endif; ?>
+
+<style>
+/* --- UPDATED SLIDER CONTROLS --- */
+.announcement-slider {
+    position: relative;
+    max-width: 850px;
+    margin: 20px auto;
+    /* overflow: visible ensures buttons can sit outside if needed */
+    overflow: visible; 
+    padding: 10px 60px;
+}
+
+/* --- THE FIX: Hide all slides by default --- */
+.announcement-slide {
+    display: none; /* This ensures they don't stack */
+    width: 100%;
+}
+
+/* --- THE FIX: Only show the one with the .active class --- */
+.announcement-slide.active {
+    display: block;
+    animation: fadeEffect 0.5s ease-out;
+}
+
+@keyframes fadeEffect {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.announcement-card {
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    /* Ensure the card takes up full width of the slide */
+    width: 100%;
+}
+.ann-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 15px; 
+}
+
+.ann-tag { 
+    padding: 4px 10px; 
+    border-radius: 5px; 
+    font-size: 11px; 
+    font-weight: bold; 
+    background: var(--accent); /* Uses your brand red */
+    color: white; 
+}
+
+.ann-date { 
+    opacity: 0.6; 
+    font-size: 12px; 
+    color: var(--text-color); 
+}
+
+.slider-controls {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    left: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.control-btn {
+    pointer-events: auto;
+    background: var(--accent); /* Red buttons match your theme better than grey */
+    color: white;
+    border: none;
+    width: 45px;
+    height: 45px;
+    cursor: pointer;
+    border-radius: 50%;
+    margin: 0 5px;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.control-btn:hover { 
+    opacity: 0.9;
+    transform: scale(1.1);
+}
+
+.slider-dots { 
+    text-align: center; 
+    margin-top: 15px; 
+}
+
+.dot {
+    height: 8px; 
+    width: 8px;
+    margin: 0 4px;
+    /* Fixed: Dots change color based on theme */
+    background-color: var(--text-color); 
+    opacity: 0.2;
+    border-radius: 50%;
+    display: inline-block;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.dot.active { 
+    background-color: var(--accent); 
+    width: 20px; 
+    border-radius: 10px; 
+    opacity: 1;
+}
+</style>
 
 <div class="hero">
     <h1 style="text-align:center; font-size: 2.8rem; margin-top: 20px; font-weight: 800;">Explore School Clubs</h1>
@@ -367,30 +537,44 @@ $messages = $conn->query("
 <div class="carousel-container">
     <button class="scroll-btn left-btn" onclick="scrollCarousel(-1)">❮</button>
     <div class="carousel" id="clubCarousel">
-        <div class="card active" data-name="ADT Dancing" onclick="location.href='club_home.php?id=1'">
-            <img src="/clubconnect/assetimages/ADT.jpg" alt="ADT">
-            <div class="overlay"><h3>ADT</h3><p>Art of dancing</p></div>
-        </div>
-        <div class="card" data-name="SCO Leaders" onclick="location.href='club_home.php?id=2'">
-            <img src="/clubconnect/assetimages/SCO.jpg" alt="SCO">
-            <div class="overlay"><h3>SCO</h3><p>Future leaders</p></div>
-        </div>
-        <div class="card" data-name="Rover Scouts" onclick="location.href='club_home.php?id=3'">
-            <img src="/clubconnect/assetimages/RoverLogo.png" alt="Rovers">
-            <div class="overlay"><h3>ACLC Rover Circle 16</h3><p>Building Character</p></div>
-        </div>
-        <div class="card" data-name="SAMAFIL Culture" onclick="location.href='club_home.php?id=4'">
-            <img src="/clubconnect/assetimages/SAMAFIL.jpg" alt="SAMAFIL">
-            <div class="overlay"><h3>SAMAFIL</h3><p>Cultural Heritage</p></div>
-        </div>
-        <div class="card" data-name="Red Cross Volunteer" onclick="location.href='club_home.php?id=5'">
-            <img src="/clubconnect/assetimages/ACLCRC.jpg" alt="Red Cross">
-            <div class="overlay"><h3>Red Cross Volunteers</h3><p>Saving lives</p></div>
-        </div>
-        <div class="card" data-name="Hawks Sports" onclick="location.href='club_home.php?id=6'">
-            <img src="/clubconnect/assetimages/ACLCHawks.jpg" alt="Hawks">
-            <div class="overlay"><h3>ACLC Hawks</h3><p>Athletic enthusiasts</p></div>
-        </div>
+        <?php 
+        $first = true; 
+        if ($clubs_query && $clubs_query->num_rows > 0):
+            while($club = $clubs_query->fetch_assoc()): 
+                
+                // 1. Get the Logo value from DB
+                $logo_val = $club['logo'];
+                
+                // 2. Determine the correct URL path
+                if (empty($logo_val)) {
+                    // Default if no logo is uploaded
+                    $image_src = "/clubconnect/assetimages/default-banner.jpg";
+                } else {
+                    // Remove any accidental backslashes from Windows paths and get just the filename
+                    $filename = basename($logo_val); 
+                    $image_src = "/clubconnect/assetimages/" . $filename;
+                }
+        ?>
+            <div class="card <?php echo $first ? 'active' : ''; ?>" 
+                 data-name="<?php echo htmlspecialchars($club['club_name']); ?>" 
+                 onclick="location.href='club_home.php?id=<?php echo $club['id']; ?>'">
+                
+                <img src="<?php echo $image_src; ?>" 
+                     alt="<?php echo htmlspecialchars($club['club_name']); ?>"
+                     onerror="this.src='/clubconnect/assetimages/default-banner.jpg';">
+                
+                <div class="overlay">
+                    <h3><?php echo htmlspecialchars($club['club_name']); ?></h3>
+                    <p><?php echo htmlspecialchars($club['description']); ?></p>
+                </div>
+            </div>
+        <?php 
+                $first = false; 
+            endwhile; 
+        else:
+            echo "<p style='padding: 20px;'>No clubs found.</p>";
+        endif;
+        ?>
     </div>
     <button class="scroll-btn right-btn" onclick="scrollCarousel(1)">❯</button>
 </div>
@@ -607,6 +791,36 @@ $messages = $conn->query("
     }
 
     setInterval(fetchNotifications, 5000);
+
+    let currentSlide = 0;
+const slides = document.querySelectorAll('.announcement-slide');
+const dots = document.querySelectorAll('.dot');
+
+function moveSlide(step) {
+    showSlide(currentSlide + step);
+}
+
+function goToSlide(index) {
+    showSlide(index);
+}
+
+function showSlide(n) {
+    if (slides.length === 0) return;
+    
+    // Hide current
+    slides[currentSlide].classList.remove('active');
+    dots[currentSlide].classList.remove('active');
+    
+    // Calculate next index (loops around)
+    currentSlide = (n + slides.length) % slides.length;
+    
+    // Show next
+    slides[currentSlide].classList.add('active');
+    dots[currentSlide].classList.add('active');
+}
+
+// Optional: Auto-play every 7 seconds
+setInterval(() => moveSlide(1), 7000);
 </script>
 </body>
 </html>

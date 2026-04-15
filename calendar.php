@@ -33,14 +33,14 @@ $eventQuery = $conn->query("
         p.id, 
         p.title, 
         p.content, 
-        p.image_url,         -- Ensure this matches your DB column
-        DATE(p.created_at) as event_date, 
+        p.image_url,
+        DATE(p.event_date) as event_date, 
         p.club_id, 
         c.club_name, 
         c.hex_color
     FROM club_posts p
     JOIN clubs c ON p.club_id = c.id
-    WHERE p.created_at BETWEEN '$startDate' AND '$endDate'
+    WHERE p.event_date BETWEEN '$startDate' AND '$endDate'
 ");
 
 if ($eventQuery) {
@@ -50,58 +50,64 @@ if ($eventQuery) {
 }
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>ClubConnect - Event Calendar</title>
-<style>
-    body {
-        margin: 0; font-family: 'Segoe UI', sans-serif;
-        background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #b31217, #e52d27);
-        background-size: 400% 400%; animation: gradientBG 12s ease infinite;
-        color: white; padding: 120px 20px 40px;
-    }
-    @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    
-    .calendar-container {
-        max-width: 1000px; margin: auto; background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(20px); padding: 30px; border-radius: 25px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-    }
-    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .calendar-header button { background: #e52d27; border: none; padding: 8px 15px; border-radius: 10px; color: white; cursor: pointer; }
-    
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
-    .day-name { text-align: center; font-weight: bold; opacity: 0.8; }
-    .day {
-        height: 100px; background: rgba(255,255,255,0.05); border-radius: 12px;
-        padding: 8px; position: relative; font-size: 14px; overflow-y: auto;
-        display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px;
-    }
-    .day-number { position: absolute; bottom: 8px; right: 10px; font-size: 12px; opacity: 0.6; pointer-events: none; }
-    
-    .dot {
-        width: 14px; height: 14px; border-radius: 50%; display: inline-block;
-        border: 1px solid rgba(255,255,255,0.3); transition: 0.2s ease-in-out; cursor: pointer;
-    }
-    .dot:hover { transform: scale(1.35); box-shadow: 0 0 10px white; z-index: 10; }
+    <meta charset="UTF-8">
+    <title>ClubConnect - Event Calendar</title>
+    <style>
+        body {
+            margin: 0; font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #b31217, #e52d27);
+            background-size: 400% 400%; animation: gradientBG 12s ease infinite;
+            color: white; padding: 120px 20px 40px;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        
+        .calendar-container {
+            max-width: 1000px; margin: auto; background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(20px); padding: 30px; border-radius: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .calendar-header h2 { margin: 0; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .calendar-header button { background: #e52d27; border: none; padding: 8px 15px; border-radius: 10px; color: white; cursor: pointer; transition: 0.3s; }
+        .calendar-header button:hover { background: #b31217; transform: scale(1.1); }
+        
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+        .day-name { text-align: center; font-weight: bold; opacity: 0.8; padding-bottom: 10px; }
+        .day {
+            height: 100px; background: rgba(255,255,255,0.05); border-radius: 12px;
+            padding: 8px; position: relative; font-size: 14px; overflow-y: auto;
+            display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .day-number { position: absolute; bottom: 8px; right: 10px; font-size: 12px; opacity: 0.6; pointer-events: none; }
+        
+        .dot {
+            width: 14px; height: 14px; border-radius: 50%; display: inline-block;
+            border: 1px solid rgba(255,255,255,0.3); transition: 0.2s ease-in-out; cursor: pointer;
+        }
+        .dot:hover { transform: scale(1.35); box-shadow: 0 0 10px white; z-index: 10; }
 
-    .upcoming-item { padding: 15px; background: rgba(255,255,255,0.05); margin-bottom: 12px; border-radius: 12px; }
+        .upcoming { margin-top: 40px; }
+        .upcoming-item { padding: 15px; background: rgba(255,255,255,0.05); margin-bottom: 12px; border-radius: 12px; border-left: 5px solid #e52d27; transition: 0.3s; }
+        .upcoming-item:hover { background: rgba(255,255,255,0.1); transform: translateX(5px); }
 
-    .topbar {
-        position: fixed; top: 0; left: 0; width: 100%; height: 70px;
-        background: rgba(0,0,0,0.6); backdrop-filter: blur(20px);
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0 40px; z-index: 1000;
-    }
-    .topbar a { text-decoration: none; color: white; background: #e52d27; padding: 8px 15px; border-radius: 10px; }
-</style>
+        .topbar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 70px;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(20px);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 40px; z-index: 1000; box-sizing: border-box;
+        }
+        .topbar a { text-decoration: none; color: white; background: #e52d27; padding: 8px 15px; border-radius: 10px; font-weight: bold; transition: 0.3s; }
+        .topbar a:hover { background: #b31217; }
+    </style>
 </head>
 <body>
 
 <div class="topbar">
     <div style="display:flex; align-items:center; gap:20px;">
-        <div style="font-size:20px; font-weight:bold;">ClubConnect</div>
+        <div style="font-size:20px; font-weight:bold; letter-spacing: 1px;">ClubConnect</div>
         <a href="home.php">Home</a>
     </div>
 </div>
@@ -121,20 +127,26 @@ if ($eventQuery) {
         <?php
         $today = date("Y-m-d");
         $upcomingQuery = $conn->query("
-            SELECT p.content as title, c.club_name, c.hex_color, DATE(p.created_at) as event_date
+            SELECT p.title, p.content, c.club_name, c.hex_color, DATE(p.event_date) as event_date
             FROM club_posts p
             JOIN clubs c ON p.club_id = c.id
-            WHERE p.created_at >= '$today'
-            ORDER BY p.created_at ASC LIMIT 5
+            WHERE p.event_date >= '$today'
+            ORDER BY p.event_date ASC LIMIT 5
         ");
-        if ($upcomingQuery) {
+
+        if ($upcomingQuery && $upcomingQuery->num_rows > 0) {
             while ($u = $upcomingQuery->fetch_assoc()) {
-                $color = $u['hex_color'] ?: '#e52d27';
+                $color = !empty($u['hex_color']) ? $u['hex_color'] : '#e52d27';
+                $displayTitle = !empty($u['title']) ? $u['title'] : substr($u['content'] ?? '', 0, 50) . "...";
+                $displayDate = date("M d, Y", strtotime($u['event_date']));
+
                 echo "<div class='upcoming-item' style='border-left: 5px solid $color;'>
-                        <strong style='color: $color;'>" . htmlspecialchars(substr($u['title'], 0, 50)) . "...</strong><br>
-                        <small>{$u['club_name']} • " . date("M d, Y", strtotime($u['event_date'])) . "</small>
+                        <strong style='color: $color;'>" . htmlspecialchars($displayTitle) . "</strong><br>
+                        <small>" . htmlspecialchars($u['club_name']) . " • " . $displayDate . "</small>
                       </div>";
             }
+        } else {
+            echo "<p style='opacity:0.6; padding:10px;'>No upcoming events found.</p>";
         }
         ?>
     </div>
@@ -227,9 +239,7 @@ function showPostPreview(post) {
     titleEl.innerText = post.title || "Club Update";
     contentEl.innerText = post.content;
 
-    // Use post.image_url to match your SQL query
     if (post.image_url && post.image_url.trim() !== "") {
-        // Use the full URL or correct path. If it's just a filename, add your path prefix here
         imgTag.src = post.image_url; 
         imgContainer.style.display = "block";
     } else {
@@ -248,7 +258,6 @@ function changeMonth(step) {
     renderCalendar();
 }
 
-// Close on outside click
 window.onclick = function(event) {
     const modal = document.getElementById("postPreviewModal");
     if (event.target == modal) closePreview();
